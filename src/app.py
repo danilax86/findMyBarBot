@@ -232,7 +232,7 @@ def send_message_to_all(message):
 def send_msg(message):
     confirm_message_keyboard = types.InlineKeyboardMarkup()
     cancel_btn = types.InlineKeyboardButton(text = "Отменить", callback_data = "cancel")
-    confirm_btn = types.InlineKeyboardButton(text = "Отправить", callback_data = "confirm " + str(message.text))
+    confirm_btn = types.InlineKeyboardButton(text = "Отправить", callback_data = "confirm&!@#" + str(message.text))
     confirm_message_keyboard.add(confirm_btn)
     confirm_message_keyboard.add(cancel_btn)
 
@@ -418,7 +418,7 @@ def ans(c):
             bot.register_next_step_handler(msg, process_name_step, context)
 
     elif "confirm" in c.data:
-        send_message.send_message_to_users(c.data.split(" ")[1])
+        send_message.send_message_to_users(c.data.split("&!@#")[1])
     elif "cancel" in c.data:
         bot.send_message(c.message.chat.id, "Произошла отмена операции")
         return
