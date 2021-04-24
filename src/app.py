@@ -2,184 +2,17 @@ import math
 from math import cos, sin, asin, sqrt
 
 import pymysql
+import send_message
+from DBManager import DataBaseManager
 import telebot
 from telebot import types
-from src.config import *
+from config import *
 
 # Подключаемся к боту по токену
-bot = telebot.TeleBot(BOT_TOKEN, parse_mode="MARKDOWN")  # Не использовать parse_mode="MarkdownV2" !!!
+bot = telebot.TeleBot(BOT_TOKEN, parse_mode = "MARKDOWN")  # Не использовать parse_mode="MarkdownV2" !!!
 
-
-def init_db():
-    """
-    Инициализируем базу данных
-
-    :return: коннектор для базы данных
-    """
-
-    # Подключаемся к MySQL серверу
-    conn = pymysql.connect(
-        host=db_host,
-        database=db_name,
-        user=db_user,
-        password=db_pass)
-
-    # Позволяет делать SQL инъекции без подтверждения
-    conn.autocommit(True)
-
-    return conn
-
-
-def insert_user_to_db(message, db_connection):
-    """
-    Добавляем пользователя в базу данных
-
-    :param message: сообщение
-    :param db_connection: инициализатор базы данных
-    """
-
-    # Создаем курсор и присоединяемся к БД
-    cursor = db_connection.cursor()
-
-    username: str = message.from_user.username
-    first_name: str = message.from_user.first_name
-    last_name: str = message.from_user.last_name
-    user = (username, first_name, last_name)
-
-    # Проверяет, есть ли пользователь в БД
-    find_user_query: str = "select username from users where username='{}'".format(user[0])
-    cursor.execute(find_user_query)
-    user_found = cursor.fetchall()
-
-    # Добавляем пользователя в БД, если его в ней нет
-    if not user_found:
-        insert_query: str = "insert into users (username, first_name, last_name) values ('{}', '{}', '{}')".format(
-            user[0], user[1], user[2])
-        cursor.execute(insert_query)
-    else:
-        pass
-
-    # Закрываем соединение
-    cursor.close()
-    db_connection.close()
-
-
-def place_found_in_db(db_connection, id):
-    """
-    Проверяет, есть ли место в базе данных
-
-    :param db_connection: инициализатор базы данных
-    :param id: идентификатор места
-    :return: False, если нет
-    """
-    # Создаем курсор и присоединяемся к БД
-    cursor = db_connection.cursor()
-
-    # Проверяет, есть ли место в БД
-    find_place_query: str = "select id from places where id='{}'".format(id)
-    cursor.execute(find_place_query)
-    result = cursor.fetchall()
-
-    # Закрываем соединение
-    cursor.close()
-    db_connection.close()
-
-    return result
-
-
-def insert_place_to_db(db_connection, name, lat, lng, description, address):
-    """
-    Добавляем место в базу данных
-
-    :param db_connection: инициализатор базы данных
-    :param name: название места
-    :param lat: широта
-    :param lng: долгота
-    :param description: описание
-    :param address: адрес
-    """
-
-    # Создаем курсор и присоединяемся к БД
-    cursor = db_connection.cursor()
-
-    # SQL query для добавления места в БД
-    insert_query: str = "insert into places (name, lat, lng, description, address) values ('{}', '{}', '{}', " \
-                        "'{}', '{}')".format(name, lat, lng, description, address)
-    cursor.execute(insert_query)
-
-    # Закрываем соединение
-    cursor.close()
-    db_connection.close()
-
-
-def delete_place_from_db(db_connection, id):
-    """
-    Удаляем место из базы данных
-
-    :param id: идентификатор места в БД
-    :param db_connection: инициализатор базы данных
-    """
-
-    # Создаем курсор и присоединяемся к БД
-    cursor = db_connection.cursor()
-
-    # SQL query для удаления места из БД
-    delete_query: str = "delete from places where id = '{}'".format(id)
-    cursor.execute(delete_query)
-
-    # Закрываем соединение
-    cursor.close()
-    db_connection.close()
-
-
-def edit_place_from_db(db_connection, name, lat, lng, description, address, id):
-    """
-    Изменяем место в базе данных
-
-    :param id: идентификатор места в БД
-    :param description: описание места
-    :param lng: долгота
-    :param lat: ширина
-    :param address: адрес
-    :param db_connection: инициализатор базы данных
-    :param name: название места
-    """
-
-    # Создаем курсор и присоединяемся к БД
-    cursor = db_connection.cursor()
-
-    # SQL query для удаления места из БД
-    edit_query: str = "update places set name='{}', lat='{}', lng='{}', description='{}', address='{}' where id='{}'" \
-        .format(name, lat, lng, description, address, id)
-    cursor.execute(edit_query)
-
-    # Закрываем соединение
-    cursor.close()
-    db_connection.close()
-
-
-def get_place_from_db(db_connection):
-    """
-    Возвращаем таблицу мест из базы данных
-
-    :param db_connection: инициализатор базы данных
-    :return: таблица мест
-    """
-
-    select_query: str = "select * from places"
-
-    # Создаем курсор и присоединяемся к БД
-    cursor = db_connection.cursor()
-
-    # Возвращаем таблицу из БД
-    cursor.execute(select_query)
-    result = cursor.fetchall()
-
-    # Закрываем соединение
-    cursor.close()
-    db_connection.close()
-
-    return result
+# Подключаемся к базе данных
+db = DataBaseManager(db_host, db_name, db_user, db_pass)
 
 
 def send_info(name, description, address, distance):
@@ -332,7 +165,7 @@ def work_with_db_step(message, context):
     if not to_edit:
         try:
             if message.text.lower() == "да":
-                insert_place_to_db(init_db(), name, lat, lng, description, address)
+                db.insert_place_to_db(name, lat, lng, description, address)
                 bot.send_message(message.chat.id, "Место было успешно добавлено")
             elif message.text.lower() == "нет":
                 bot.send_message(message.chat.id, "Нет, так нет")
@@ -345,7 +178,7 @@ def work_with_db_step(message, context):
     else:
         try:
             if message.text.lower() == "да":
-                edit_place_from_db(init_db(), name, lat, lng, description, address, context[1])
+                db.edit_place_from_db(name, lat, lng, description, address, context[1])
                 bot.send_message(message.chat.id, "Место было успешно изменено")
             elif message.text.lower() == "нет":
                 bot.send_message(message.chat.id, "Нет, так нет")
@@ -370,16 +203,43 @@ def delete_place_step(message, context):
             bot.send_message(message.chat.id, "Удаление отменено")
             return
         elif message.text.lower() == "да":
-            delete_place_from_db(init_db(), context[0])
-            bot.send_message(message.chat.id, text="Место было успешно удалено")
+            db.delete_place_from_db(context[0])
+            bot.send_message(message.chat.id, text = "Место было успешно удалено")
         else:
             raise AttributeError
     except AttributeError:
-        msg = bot.reply_to(message, text="Так да или нет?")
+        msg = bot.reply_to(message, text = "Так да или нет?")
         bot.register_next_step_handler(msg, delete_place_step, context)
 
 
-@bot.message_handler(commands=["add"])
+@bot.message_handler(commands = ["send"])
+def send_message_to_all(message):
+    """
+        Обрабатываем команду на отправку сообщения всем пользователям, которая доступна только админам
+    
+        :param message: сообщение
+        """
+
+    if message.from_user.username in admins:
+        msg = bot.reply_to(message, "Привет, " + message.from_user.username +
+                           "! Напиши сообщение, которое хочешь отправить!")
+
+        bot.register_next_step_handler(msg, send_msg)
+    else:
+        return
+
+
+def send_msg(message):
+    confirm_message_keyboard = types.InlineKeyboardMarkup()
+    cancel_btn = types.InlineKeyboardButton(text = "Отменить", callback_data = "cancel")
+    confirm_btn = types.InlineKeyboardButton(text = "Отправить", callback_data = "confirm " + str(message.text))
+    confirm_message_keyboard.add(confirm_btn)
+    confirm_message_keyboard.add(cancel_btn)
+
+    bot.send_message(message.chat.id, "Отправить сообщение?", reply_markup = confirm_message_keyboard)
+
+
+@bot.message_handler(commands = ["add"])
 def add_place(message):
     """
     Обрабатываем команду на добавление места, которая доступна только админам
@@ -398,7 +258,7 @@ def add_place(message):
         return
 
 
-@bot.message_handler(commands=["start"])
+@bot.message_handler(commands = ["start"])
 def send_location(message):
     """
     Стартовое сообщение для работы бота
@@ -409,19 +269,20 @@ def send_location(message):
     # Создаем клавиатуру с кнопкой отправки геопозиции
     keyboard = types.ReplyKeyboardMarkup()
     keyboard.resize_keyboard = True
-    send_location_btn = types.KeyboardButton("📍 Отправить свое местоположение", request_location=True)
+    send_location_btn = types.KeyboardButton("📍 Отправить свое местоположение", request_location = True)
     keyboard.add(send_location_btn)
 
     # Модифицируем клавиатуру, если пользователь -- админ
     if message.from_user.username in admins:
         add_location_btn = types.KeyboardButton("/add Добавить местоположение")
-        keyboard.add(add_location_btn)
-        bot.send_message(message.chat.id, "Здравствуй, сталкер", reply_markup=keyboard)
+        send_message_btn = types.KeyboardButton("/send Отправить сообщение")
+        keyboard.add(add_location_btn, send_message_btn)
+        bot.send_message(message.chat.id, "Здравствуй, сталкер", reply_markup = keyboard)
     else:
-        bot.send_message(message.chat.id, "Отправь мне свою геопозицию", reply_markup=keyboard)
+        bot.send_message(message.chat.id, "Отправь мне свою геопозицию", reply_markup = keyboard)
 
 
-@bot.message_handler(content_types=['location'])
+@bot.message_handler(content_types = ['location'])
 def handle_loc(message):
     """
     Обрабатываем геопозицию, отправленную пользователем
@@ -429,7 +290,7 @@ def handle_loc(message):
     :param message: сообщение
     """
 
-    insert_user_to_db(message, init_db())
+    db.insert_user_to_db(message)
 
     usr_lat = message.location.latitude
     usr_lng = message.location.longitude
@@ -441,7 +302,7 @@ def handle_loc(message):
     place_found: bool = False
 
     # Проходим по таблице и вытягиваем данные о месте
-    for row in get_place_from_db(init_db()):
+    for row in db.get_place_from_db():
         plc_name: str = row[0]
         plc_lat: float = row[1]
         plc_lng: float = row[2]
@@ -457,14 +318,14 @@ def handle_loc(message):
         # сортируем список по этому значению
         plc: tuple = (plc_name, plc_lat, plc_lng, plc_desc, plc_addr, usr_to_plc, plc_img_url, plc_id)
         list_of_places.append(plc)
-        list_of_places = sorted(list_of_places, key=lambda x: x[5])
+        list_of_places = sorted(list_of_places, key = lambda x: x[5])
 
     # Оставляем 4 ближайших места
     list_of_places = list_of_places[:4]
 
     for plc in list_of_places:
         # Область, в радиусе (в километрах) которой будем искать заведения
-        radius = 3
+        radius = 5
 
         # Достаем информацию о месте из кортежа
         name = str(plc[0])
@@ -483,35 +344,36 @@ def handle_loc(message):
 
             # Создаем inline-кнопки для каждого подходящего под условие результата
             inline_keyboard = types.InlineKeyboardMarkup()
-            geo_btn = types.InlineKeyboardButton(text="🗺 Где это?",  # Передаем кнопке тип операции и координаты
-                                                 callback_data="send_location " + latitude + " " + longitude)
+            geo_btn = types.InlineKeyboardButton(text = "🗺 Где это?",  # Передаем кнопке тип операции и координаты
+                                                 callback_data = "send_location " + latitude + " " + longitude)
             inline_keyboard.add(geo_btn)
 
             # Добавляем inline-кнопку удаления места для каждого результата, если пользователь -- админ
             if message.from_user.username in admins:
-                delete_btn = types.InlineKeyboardButton(text="❌ Удалить место",
-                                                        callback_data="delete_location " + id)
+                delete_btn = types.InlineKeyboardButton(text = "❌ Удалить место",
+                                                        callback_data = "delete_location " + id)
 
-                edit_btn = types.InlineKeyboardButton(text="✏️ Изменить место",
-                                                      callback_data="edit_location " + id)
+                edit_btn = types.InlineKeyboardButton(text = "✏️ Изменить место",
+                                                      callback_data = "edit_location " + id)
                 inline_keyboard.add(edit_btn)
                 inline_keyboard.add(delete_btn)
 
             try:
                 # Отправляем сообщение с информацией о месте, фотографией и кнопкой с геопозицией внутри
-                bot.send_photo(message.chat.id, photo=open("images/" + img + ".jpg", 'rb'),
-                               caption=send_info(name, description, address, distance), reply_markup=inline_keyboard)
+                bot.send_photo(message.chat.id, photo = open("images/" + img + ".jpg", 'rb'),
+                               caption = send_info(name, description, address, distance),
+                               reply_markup = inline_keyboard)
                 # Отправляем сообщение с информацией о месте и кнопкой с геопозицией внутри, если фотография не найдена
             except FileNotFoundError or UnboundLocalError or TypeError:
                 bot.send_message(message.chat.id,
-                                 text=send_info(name, description, address, distance), reply_markup=inline_keyboard)
+                                 text = send_info(name, description, address, distance), reply_markup = inline_keyboard)
 
     # Если мест в радиусе нет, то уведомляем об этом пользователя
     if not place_found:
         bot.send_message(message.chat.id, "Рядом с вами нет подходящих мест 😞 ")
 
 
-@bot.callback_query_handler(func=lambda c: True)
+@bot.callback_query_handler(func = lambda c: True)
 def ans(c):
     """
     Обрабатываем нажатия inline-кнопок
@@ -523,13 +385,13 @@ def ans(c):
         # Парсим координаты из полученных данных после нажатия кнопки и отправляем локацию
         lat = c.data.split(" ")[1]
         lng = c.data.split(" ")[2]
-        bot.send_location(cid, lat, lng, reply_markup=keyboard)
+        bot.send_location(cid, lat, lng, reply_markup = keyboard)
     elif "delete_location" in c.data:
         # Парсим идентификатор места, чтобы найти его в БД и удалить
         id = c.data.split(" ")[1]
         context = [id]
 
-        if not place_found_in_db(init_db(), id):
+        if not db.place_found_in_db(id):
             bot.send_message(cid, "Невозможно удалить. Места нет в базе данных")
         else:
             text = "Точно удалить место?"
@@ -542,7 +404,7 @@ def ans(c):
         to_edit = True
         context = [to_edit, id]
 
-        if not place_found_in_db(init_db(), id):
+        if not db.place_found_in_db(id):
             bot.send_message(cid, "Невозможно изменить. Места нет в базе данных")
         else:
             msg = bot.reply_to(c.message, "Введи новое название места.")
@@ -554,6 +416,12 @@ def ans(c):
                 pass
 
             bot.register_next_step_handler(msg, process_name_step, context)
+
+    elif "confirm" in c.data:
+        send_message.send_message_to_users(c.data.split(" ")[1])
+    elif "cancel" in c.data:
+        bot.send_message(c.message.chat.id, "Произошла отмена операции")
+        return
 
     else:
         pass
