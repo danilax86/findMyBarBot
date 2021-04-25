@@ -212,33 +212,6 @@ def delete_place_step(message, context):
         bot.register_next_step_handler(msg, delete_place_step, context)
 
 
-@bot.message_handler(commands = ["send"])
-def send_message_to_all(message):
-    """
-        Обрабатываем команду на отправку сообщения всем пользователям, которая доступна только админам
-    
-        :param message: сообщение
-        """
-
-    if message.from_user.username in admins:
-        msg = bot.reply_to(message, "Привет, " + message.from_user.username +
-                           "! Напиши сообщение, которое хочешь отправить!")
-
-        bot.register_next_step_handler(msg, send_msg)
-    else:
-        return
-
-
-def send_msg(message):
-    confirm_message_keyboard = types.InlineKeyboardMarkup()
-    cancel_btn = types.InlineKeyboardButton(text = "Отменить", callback_data = "cancel")
-    confirm_btn = types.InlineKeyboardButton(text = "Отправить", callback_data = "confirm&!@#" + str(message.text))
-    confirm_message_keyboard.add(confirm_btn)
-    confirm_message_keyboard.add(cancel_btn)
-
-    bot.send_message(message.chat.id, "Отправить сообщение?", reply_markup = confirm_message_keyboard)
-
-
 @bot.message_handler(commands = ["add"])
 def add_place(message):
     """
@@ -416,12 +389,6 @@ def ans(c):
                 pass
 
             bot.register_next_step_handler(msg, process_name_step, context)
-
-    elif "confirm" in c.data:
-        send_message.send_message_to_users(c.data.split("&!@#")[1])
-    elif "cancel" in c.data:
-        bot.send_message(c.message.chat.id, "Произошла отмена операции")
-        return
 
     else:
         pass
