@@ -162,10 +162,10 @@ class DataBaseManager:
 
     def get_users_from_db(self):
         """
-        Возвращаем таблицу мест из базы данных
+        Возвращаем таблицу пользователей из базы данных
 
         :param db_connection: инициализатор базы данных
-        :return: таблица мест
+        :return: таблица пользователей
         """
 
         select_query: str = "select * from users"
