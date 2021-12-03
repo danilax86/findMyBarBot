@@ -1,11 +1,15 @@
 import math
 from math import cos, sin, asin, sqrt
 
-import pymysql
+import telebot
+from requests.exceptions import MissingSchema
+from telebot import types
+
+from PIL import Image
+import requests
+
 import send_message
 from DBManager import DataBaseManager
-import telebot
-from telebot import types
 from config import *
 
 # Подключаемся к боту по токену
@@ -356,12 +360,15 @@ def handle_loc(message):
                 inline_keyboard.add(delete_btn)
 
             try:
+                if img == 'no_image':
+                    raise FileNotFoundError
                 # Отправляем сообщение с информацией о месте, фотографией и кнопкой с геопозицией внутри
-                bot.send_photo(message.chat.id, photo = open("images/" + img + ".jpg", 'rb'),
+                im = Image.open(requests.get(img, stream=True).raw, mode = 'r')
+                bot.send_photo(message.chat.id, photo = im,
                                caption = send_info(name, description, address, distance),
                                reply_markup = inline_keyboard)
                 # Отправляем сообщение с информацией о месте и кнопкой с геопозицией внутри, если фотография не найдена
-            except FileNotFoundError or UnboundLocalError or TypeError:
+            except FileNotFoundError or UnboundLocalError or TypeError or MissingSchema:
                 bot.send_message(message.chat.id,
                                  text = send_info(name, description, address, distance), reply_markup = inline_keyboard)
 
@@ -443,7 +450,7 @@ def count_distance(usr_lat, usr_lng, plc_lat, plc_lng):
 
 
 def main():
-    bot.polling()
+    bot.polling(non_stop = True)
 
 
 if __name__ == '__main__':
